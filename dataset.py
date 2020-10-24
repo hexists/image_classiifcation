@@ -17,6 +17,21 @@ dataloader = torch.utils.data.DataLoader(dataset,
                                          batch_size=2,
                                          shuffle=True,
                                          num_workers=8)
+# for i, data in enumerate(dataloader):
+#     print(data[0].size())  # input image
+#     print(data[1])         # class label
+# 
+#     break
+
+import numpy as np
+import matplotlib.pyplot as plt
+from torchvision.transforms import ToPILImage
+to_img = ToPILImage()
+
 for i, data in enumerate(dataloader):
-    print(data[0].size())  # input image
-    print(data[1])         # class label
+    img = data[0][0,:]
+    break
+
+print(img.size())
+print("max: {}, min: {}".format(np.max(img.numpy()), np.min(img.numpy())))
+plt.imshow(to_img(img))

@@ -5,9 +5,13 @@ import sys
 import shutil
 from collections import defaultdict
 
+# train
+# src_path = 'nipa_dataset/train'
+# dst_path_prefix = 'images'
 
-src_path = 'nipa_dataset/train'
-dst_path_prefix = 'images'
+# test
+src_path = 'nipa_dataset/test'
+dst_path_prefix = 'test_images'
 
 file_list = [fname for fname in os.listdir(src_path) if fname.endswith('.jpg')]
 

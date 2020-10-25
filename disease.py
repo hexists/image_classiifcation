@@ -57,6 +57,7 @@ transform = transforms.Compose([
                  transforms.ToTensor(),
                  transforms.Normalize((0.1307,), (0.3081,))])
 
+'''
 train_loader = torch.utils.data.DataLoader(
   datasets.MNIST('../data', train=True, download=True, 
                  transform=transform), 
@@ -66,7 +67,17 @@ test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, download=True,
                  transform=transform), 
     batch_size=test_batch_size, shuffle=True, **kwargs)
+'''
 
+train_data = dset.ImageFolder(root="images/",
+                           transform=transforms.Compose([
+                               transforms.Resize(128),       # 한 축을 128로 조절하고
+                               transforms.ToTensor(),        # Tensor로 바꾸고 (0~1로 자동으로 normalize)
+                           ]))
+train_loader = torch.utils.data.DataLoader(dataset,
+                                         batch_size=batch_size,
+                                         shuffle=True,
+                                         num_workers=8)
 
 model = Net().to(device)
 optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)

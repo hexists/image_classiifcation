@@ -1,126 +1,156 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# coding: utf-8
+
+# ref: https://tutorials.pytorch.kr/beginner/blitz/cifar10_tutorial.html
+
+# In[1]:
+
 
 import torch
+import torchvision
+import torchvision.transforms as transforms
+from torchvision import datasets, transforms
+import torch.utils.data as data_utils
+
+
+# In[14]:
+
+
+batch_size = 4
+transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+transform = transforms.Compose([
+    transforms.Resize(32),       # 한 축을 128로 조절하고
+    transforms.ToTensor(),        # Tensor로 바꾸고 (0~1로 자동으로 normalize)
+])
+
+train_data = datasets.ImageFolder(root="images/", transform=transform)
+
+test_len = int(len(train_data) * 0.2)
+train_data, test_data = data_utils.random_split(train_data, (len(train_data) - valid_len, valid_len))
+
+trainloader = data_utils.DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=2)
+testloader = data_utils.DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=2)
+
+print('===== trainloader sample')
+for i, data in enumerate(trainloader):
+    print('input image: {}'.format(data[0].size()))  # input image
+    print('class label: {}'.format(data[1]))         # class label
+    break
+
+print('===== testloader sample')
+for i, data in enumerate(testloader):
+    print('input image: {}'.format(data[0].size()))  # input image
+    print('class label: {}'.format(data[1]))         # class label
+    break
+    
+classes = ('10_20', '11_14', '13_1', '13_15', '13_16', '13_17', '13_18', '13_20', '13_6', '13_9', '3_20', '3_5', '4_11', '4_2', '4_7', '5_8', '7_1', '7_20', '8_6', '8_9')
+
+
+# In[15]:
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 이미지를 보여주기 위한 함수
+
+def imshow(img):
+    img = img / 2 + 0.5     # unnormalize
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.show()
+
+
+# 학습용 이미지를 무작위로 가져오기
+dataiter = iter(trainloader)
+images, labels = dataiter.next()
+
+# 이미지 보여주기
+imshow(torchvision.utils.make_grid(images))
+# 정답(label) 출력
+print(' '.join('%5s' % classes[labels[j]] for j in range(4)))
+
+
+# In[19]:
+
+
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms
 
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(784, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(128, 64)
-        self.fc5 = nn.Linear(64, 32)
-        self.fc6 = nn.Linear(32, 10)
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 20)
 
     def forward(self, x):
-        x = x.float()
-        h1 = F.relu(self.fc1(x.view(-1, 784)))
-        h2 = F.relu(self.fc2(h1))
-        h3 = F.relu(self.fc3(h2))
-        h4 = F.relu(self.fc4(h3))
-        h5 = F.relu(self.fc5(h4))
-        h6 = self.fc6(h5)
-        return F.log_softmax(h6, dim=1)
-
-print("init model done")
-
-# Set Hyper parameters and other variables to train the model.
-
-batch_size = 64
-test_batch_size = 1000
-epochs = 10
-lr = 0.01
-momentum = 0.5
-no_cuda = True
-seed = 1
-log_interval = 200
-
-use_cuda = not no_cuda and torch.cuda.is_available()
-
-torch.manual_seed(seed)
-
-device = torch.device("cuda" if use_cuda else "cpu")
-
-kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-
-print("set vars and device done")
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 5 * 5)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 
-#Prepare Data Loader for Training and Validation
-
-transform = transforms.Compose([
-                 transforms.ToTensor(),
-                 transforms.Normalize((0.1307,), (0.3081,))])
-
-'''
-train_loader = torch.utils.data.DataLoader(
-  datasets.MNIST('../data', train=True, download=True, 
-                 transform=transform), 
-    batch_size = batch_size, shuffle=True, **kwargs)
-
-test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=False, download=True,
-                 transform=transform), 
-    batch_size=test_batch_size, shuffle=True, **kwargs)
-'''
-
-train_data = dset.ImageFolder(root="images/",
-                           transform=transforms.Compose([
-                               transforms.Resize(128),       # 한 축을 128로 조절하고
-                               transforms.ToTensor(),        # Tensor로 바꾸고 (0~1로 자동으로 normalize)
-                           ]))
-train_loader = torch.utils.data.DataLoader(dataset,
-                                         batch_size=batch_size,
-                                         shuffle=True,
-                                         num_workers=8)
-
-model = Net().to(device)
-optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+net = Net()
 
 
-#Define Train function and Test function to validate.
+# In[20]:
 
-def train(log_interval, model, device, train_loader, optimizer, epoch):
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
+
+import torch.optim as optim
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+
+# In[21]:
+
+
+for epoch in range(2):   # 데이터셋을 수차례 반복합니다.
+
+    running_loss = 0.0
+    for i, data in enumerate(trainloader, 0):
+        # [inputs, labels]의 목록인 data로부터 입력을 받은 후;
+        inputs, labels = data
+
+        # 변화도(Gradient) 매개변수를 0으로 만들고
         optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, target)
+
+        # 순전파 + 역전파 + 최적화를 한 후
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        if batch_idx % log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
 
-def test(log_interval, model, device, test_loader):
-    model.eval()
-    test_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item() 
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+        # 통계를 출력합니다.
+        running_loss += loss.item()
+        if i % 2000 == 1999:    # print every 2000 mini-batches
+            print('[%d, %5d] loss: %.3f' %
+                  (epoch + 1, i + 1, running_loss / 2000))
+            running_loss = 0.0
 
-    test_loss /= len(test_loader.dataset)
-
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format
-          (test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+print('Finished Training')
 
 
-# Train and Test the model and save it.
+# In[8]:
 
-for epoch in range(1, 11):
-    train(log_interval, model, device, train_loader, optimizer, epoch)
-    test(log_interval, model, device, test_loader)
-torch.save(model, './model.pt')
+
+PATH = './disease_net.pth'
+torch.save(net.state_dict(), PATH)
+
+
+# In[ ]:
+
+
+
+

@@ -16,16 +16,18 @@ log_interval = 200
 no_cuda = True
 use_cuda = not no_cuda and torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
-num_iters = 10
 
 transform = transforms.Compose(
-    [transforms.ToTensor(),
+    [transforms.Resize(32),       # 한 축을 128로 조절하고
+     transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
+'''
 transform = transforms.Compose([
     transforms.Resize(32),       # 한 축을 128로 조절하고
     transforms.ToTensor(),        # Tensor로 바꾸고 (0~1로 자동으로 normalize)
 ])
+'''
 
 train_data = datasets.ImageFolder(root="images/", transform=transform)
 
@@ -135,7 +137,8 @@ def test(log_interval, model, criterion, device, test_loader):
 
 def train(log_interval, model, criterion, device, train_loader, optimizer, epoch):
     model.train()
-    running_losses = []
+    train_losses = []
+    correct = 0
     for i, data in enumerate(train_loader):
         # [inputs, labels]의 목록인 data로부터 입력을 받은 후;
         inputs, labels = data
@@ -147,7 +150,9 @@ def train(log_interval, model, criterion, device, train_loader, optimizer, epoch
         # 순전파 + 역전파 + 최적화를 한 후
         outputs = net(inputs)
         loss = criterion(outputs, labels)
-        running_losses.append(loss.item())
+        pred = outputs.argmax(dim=1, keepdim=True)
+        correct += pred.eq(labels.view_as(pred)).sum().item()
+        train_losses.append(loss.item())
         loss.backward()
         optimizer.step()
 
@@ -155,7 +160,7 @@ def train(log_interval, model, criterion, device, train_loader, optimizer, epoch
         print_progress('train', progress)
     print(file=sys.stderr)
 
-    return np.mean(running_losses)
+    return np.mean(train_losses), 100. * correct / len(train_loader.dataset)
 
 
 from torch.utils.tensorboard import SummaryWriter
@@ -164,14 +169,16 @@ date_time = datetime.now().strftime('%Y%m%d%H%M')
 writer = SummaryWriter('./runs/{}'.format(date_time))
 
 
+num_iters = 100
 for epoch in range(1, num_iters + 1):   # 데이터셋을 수차례 반복합니다.
-    tr_loss = train(log_interval, net, criterion, device, trainloader, optimizer, epoch)
+    tr_loss, tr_acc = train(log_interval, net, criterion, device, trainloader, optimizer, epoch)
     te_loss, te_acc = test(log_interval, net, criterion, device, testloader)
 
-    print("{} / {}\ttrain loss : {:.4f}, test loss: {:.4f} test acc: {:.4f}\n".format(epoch, num_iters, tr_loss, te_loss, te_acc), file=sys.stderr)
+    print("{} / {}\ttrain loss, acc : {:.4f}, {:.4f}, test loss, acc: {:.4f}, {:.4f}\n".format(epoch, num_iters, tr_loss, tr_acc, te_loss, te_acc), file=sys.stderr)
 
     writer.add_scalar('{}/{}'.format('loss', 'train'), tr_loss, epoch)
     writer.add_scalar('{}/{}'.format('loss', 'test'), te_loss, epoch)
+    writer.add_scalar('{}/{}'.format('acc', 'train'), tr_acc, epoch)
     writer.add_scalar('{}/{}'.format('acc', 'test'), te_acc, epoch)
 
 writer.close()

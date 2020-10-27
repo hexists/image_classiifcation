@@ -164,7 +164,7 @@ date_time = datetime.now().strftime('%Y%m%d%H%M')
 writer = SummaryWriter('./runs/{}'.format(date_time))
 
 
-num_iters = 10
+num_iters = 30
 best_acc = 0
 
 for epoch in range(1, num_iters + 1):   # 데이터셋을 수차례 반복합니다.
@@ -238,8 +238,10 @@ def inference(model, device, loader):
             if i == 10:
                 break
 
-model = Net()
 PATH = './checkpoint/ckpt.pth'
-model.load_state_dict(torch.load(PATH))
+
+model = Net()
+checkpoint = torch.load(PATH)
+model.load_state_dict(checkpoint['net'])
 
 inference(model, device, evalloader)

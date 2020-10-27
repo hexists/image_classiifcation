@@ -18,11 +18,12 @@ use_cuda = not no_cuda and torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 transform = transforms.Compose(
-    [transforms.Resize(128),       # 한 축을 128로 조절하고
+    [transforms.Resize(64),       # 한 축을 128로 조절하고
      transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 train_data = datasets.ImageFolder(root="images/", transform=transform)
+classes = train_data.classes
 
 test_len = int(len(train_data) * 0.2)
 train_data, test_data = data_utils.random_split(train_data, (len(train_data) - test_len, test_len))
@@ -42,9 +43,9 @@ for i, data in enumerate(testloader):
     print('class label: {}'.format(data[1]))         # class label
     break
     
-classes = ('10_20', '11_14', '13_1', '13_15', '13_16', '13_17', '13_18', '13_20', '13_6', '13_9', '3_20', '3_5', '4_11', '4_2', '4_7', '5_8', '7_1', '7_20', '8_6', '8_9')
-
-
+print(classes)
+ 
+ 
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -77,14 +78,14 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 29 * 29, 120)
+        self.fc1 = nn.Linear(16 * 13 * 13, 120)  # x^2 * batch_size * 16
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 20)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 29 * 29)
+        x = x.view(-1, 16 * 13 * 13)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -162,7 +163,7 @@ date_time = datetime.now().strftime('%Y%m%d%H%M')
 writer = SummaryWriter('./runs/{}'.format(date_time))
 
 
-num_iters = 100
+num_iters = 1
 for epoch in range(1, num_iters + 1):   # 데이터셋을 수차례 반복합니다.
     tr_loss, tr_acc = train(log_interval, net, criterion, device, trainloader, optimizer, epoch)
     te_loss, te_acc = test(log_interval, net, criterion, device, testloader)
@@ -180,3 +181,53 @@ print('Finished Training')
 
 PATH = './disease_net.pth'
 torch.save(net.state_dict(), PATH)
+ 
+
+import glob
+from PIL import Image
+
+
+class TestDataset(torch.utils.data.Dataset):
+    def __init__(self, path, transform=None):
+        self.image_paths = glob.glob(path + '*.jpg')
+        self.transform = transform
+
+    def __getitem__(self, index):
+        x = Image.open(self.image_paths[index])
+        if self.transform is not None:
+            x = self.transform(x)
+
+        return (self.image_paths[index], x)
+
+    def __len__(self):
+        return len(self.image_paths)
+
+eval_data = TestDataset('./nipa_dataset/test/', transform=transform)
+evalloader = data_utils.DataLoader(eval_data, batch_size=1, shuffle=False, num_workers=2)
+
+print('===== evalloader sample')
+for i, data in enumerate(evalloader):
+    names, data = data
+    print(names, data.size())
+    break
+ 
+def inference(model, device, loader):
+    model.eval()
+    with torch.no_grad():
+        for i, data in enumerate(loader):
+            name, data = data
+            data = data.to(device)
+            outputs = model(data)
+            pred = outputs.argmax(dim=1, keepdim=True)
+            fname = name[0].split('/')[-1]
+            pclass, dclass = classes[pred.item()].split('_')
+            print('{}\t{}\t{}'.format(fname, pclass, dclass))
+
+            if i == 10:
+                break
+
+model = Net()
+PATH = './disease_net.pth'
+model.load_state_dict(torch.load(PATH))
+
+inference(model, device, evalloader)

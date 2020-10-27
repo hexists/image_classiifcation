@@ -5,7 +5,6 @@
 
 import torch
 import torchvision
-import torchvision.transforms as transforms
 from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 import torch.utils.data as data_utils

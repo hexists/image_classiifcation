@@ -22,13 +22,6 @@ transform = transforms.Compose(
      transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-'''
-transform = transforms.Compose([
-    transforms.Resize(32),       # 한 축을 128로 조절하고
-    transforms.ToTensor(),        # Tensor로 바꾸고 (0~1로 자동으로 normalize)
-])
-'''
-
 train_data = datasets.ImageFolder(root="images/", transform=transform)
 
 test_len = int(len(train_data) * 0.2)

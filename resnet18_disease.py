@@ -216,6 +216,7 @@ def set_model():
     # 새로 생성된 모듈의 매개변수는 기본값이 requires_grad=True 임
     num_ftrs = model_conv.fc.in_features
     model_conv.fc = nn.Linear(num_ftrs, 20)
+    model_conv = model_conv.to(device)
     return model_conv
 
 
@@ -234,7 +235,7 @@ if __name__ == '__main__':
     use_cuda = not no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    model = set_model()
+    model = set_model(device)
 
     if args.mode == 'inference':
         test_loader = set_test_loader(args.test_path)
@@ -243,7 +244,7 @@ if __name__ == '__main__':
         classes = checkpoint['classes']
         inference(model, classes, device, test_loader)
     else:
-        preprocess_train_dataset(args.train_path, './images')
+        # preprocess_train_dataset(args.train_path, './images')
         train_loader, valid_loader, classes = set_train_loader('./images', args.batch_size)
 
         criterion = nn.CrossEntropyLoss()

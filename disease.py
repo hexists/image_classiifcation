@@ -8,6 +8,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torchvision import datasets, transforms
 import torch.utils.data as data_utils
+import os
 import sys
 
 
@@ -163,10 +164,24 @@ date_time = datetime.now().strftime('%Y%m%d%H%M')
 writer = SummaryWriter('./runs/{}'.format(date_time))
 
 
-num_iters = 1
+num_iters = 10
+best_acc = 0
+
 for epoch in range(1, num_iters + 1):   # 데이터셋을 수차례 반복합니다.
     tr_loss, tr_acc = train(log_interval, net, criterion, device, trainloader, optimizer, epoch)
     te_loss, te_acc = test(log_interval, net, criterion, device, testloader)
+
+    if te_acc > best_acc:
+        print('Saving..')
+        state = {
+            'net': net.state_dict(),
+            'acc': te_acc,
+            'epoch': epoch,
+        }
+        if not os.path.isdir('checkpoint'):
+            os.mkdir('checkpoint')
+        torch.save(state, './checkpoint/ckpt.pth')
+        best_acc = te_acc
 
     print("{} / {}\ttrain loss, acc : {:.4f}, {:.4f}, test loss, acc: {:.4f}, {:.4f}\n".format(epoch, num_iters, tr_loss, tr_acc, te_loss, te_acc), file=sys.stderr)
 
@@ -176,12 +191,9 @@ for epoch in range(1, num_iters + 1):   # 데이터셋을 수차례 반복합니
     writer.add_scalar('{}/{}'.format('acc', 'test'), te_acc, epoch)
 
 writer.close()
-print('Finished Training')
 
+print('Finished Training, Best acc: {}'.format(best_acc))
 
-PATH = './disease_net.pth'
-torch.save(net.state_dict(), PATH)
- 
 
 import glob
 from PIL import Image
@@ -227,7 +239,7 @@ def inference(model, device, loader):
                 break
 
 model = Net()
-PATH = './disease_net.pth'
+PATH = './checkpoint/ckpt.pth'
 model.load_state_dict(torch.load(PATH))
 
 inference(model, device, evalloader)

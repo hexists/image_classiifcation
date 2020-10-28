@@ -45,10 +45,20 @@ class TestDataset(torch.utils.data.Dataset):
 2) Tensor로 변환
 3) [-1, 1] 범위로 정규화
 '''
+
+'''
 transform = transforms.Compose(
     [transforms.Resize(256),
      transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+'''
+
+transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
 
 def preprocess_train_dataset(src_path, dst_path_prefix='./images'):
